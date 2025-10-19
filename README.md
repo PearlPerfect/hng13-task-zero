@@ -29,7 +29,7 @@ A simple RESTful API that returns profile information along with dynamic cat fac
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
+git clone [<your-repo-url>](https://github.com/PearlPerfect/hng13-task-zero)
 cd profile-api
 Install dependencies:
 
@@ -52,6 +52,7 @@ Development mode (with auto-reload):
 bash
 npm run dev
 Production mode:
+The API will be available at https://hng13-task-zero.fly.dev
 
 bash
 npm start
