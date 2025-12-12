@@ -6,7 +6,7 @@ primary_region = "iad"
   # Comment out or remove the builder line to use Dockerfile instead of buildpacks
 
 [http_service]
-  internal_port = 8080  # Must match your Dockerfile EXPOSE port
+  internal_port = 3000  # Changed from 8080 to 3000
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
@@ -17,7 +17,7 @@ primary_region = "iad"
   cpus = 1
 
 [env]
-  PORT = "3000"
+  PORT = "3000"  # This must match internal_port
   NODE_ENV = "production"
 
 # Optional health check
