@@ -7,6 +7,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   next();
@@ -15,7 +16,7 @@ app.use((req, res, next) => {
 // Serve Swagger UI at /api-docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
-  customSiteTitle: 'Profile API with Cat Facts',
+  customSiteTitle: 'Task Zero Profile API Documentation',
   customCss: '.swagger-ui .topbar { display: none }',
   swaggerOptions: {
     docExpansion: 'none',
@@ -47,14 +48,14 @@ app.get('/swagger.json', (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Welcome to Profile API with Cat Facts
+ *                   example: Welcome to Task Zero Profile API
  *                 documentation:
  *                   type: string
  *                   example: /api-docs
  */
 app.get('/', (req, res) => {
   res.json({
-    message: 'Welcome to Profile API with Cat Facts',
+    message: 'Welcome to Task Zero Profile API',
     documentation: '/api-docs',
     endpoints: [
       {
@@ -66,6 +67,11 @@ app.get('/', (req, res) => {
         path: '/api-docs',
         method: 'GET',
         description: 'Interactive API documentation'
+      },
+      {
+        path: '/health',
+        method: 'GET',
+        description: 'Health check endpoint'
       }
     ]
   });
@@ -126,9 +132,9 @@ app.get('/me', async (req, res) => {
     const responseData = {
       status: "success",
       user: {
-        email: process.env.USER_EMAIL,
-        name: process.env.USER_NAME,
-        stack: process.env.USER_STACK
+        email: process.env.USER_EMAIL || "Not configured",
+        name: process.env.USER_NAME || "Not configured",
+        stack: process.env.USER_STACK || "Not configured"
       },
       timestamp: timestamp,
       fact: catFact,
@@ -176,13 +182,14 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
   });
 });
 
-// Start server
+// Start server - IMPORTANT: Use 0.0.0.0 for Docker/Fly.io
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
   console.log(`API Documentation available at http://0.0.0.0:${PORT}/api-docs`);
   console.log(`Health check: http://0.0.0.0:${PORT}/health`);
 });
