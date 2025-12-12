@@ -1,96 +1,195 @@
-// swagger.js
-const swaggerJsdoc = require('swagger-jsdoc');
+const express = require("express");
+const axios = require("axios");
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
+require('dotenv').config();
 
-const options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Profile API with Cat Facts',
-      version: '1.0.0',
-      description: 'A simple API that returns user profile information along with a random cat fact',
-      contact: {
-        name: process.env.USER_NAME || 'Developer',
-        email: process.env.USER_EMAIL || 'developer@example.com'
-      }
-    },
-    servers: [
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+// Serve Swagger UI at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customSiteTitle: 'Task Zero Profile API Documentation',
+  customCss: '.swagger-ui .topbar { display: none }',
+  swaggerOptions: {
+    docExpansion: 'none',
+    filter: true,
+    showRequestDuration: true
+  }
+}));
+
+// Serve swagger.json
+app.get('/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API Root - Welcome message
+ *     description: Returns a welcome message for the API
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Welcome to Task Zero Profile API
+ *                 documentation:
+ *                   type: string
+ *                   example: /api-docs
+ */
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to Task Zero Profile API',
+    documentation: '/api-docs',
+    endpoints: [
       {
-        url: process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.FLY_APP_NAME}.fly.dev` 
-          : `http://localhost:${process.env.PORT || 3000}`,
-        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
-      }
-    ],
-    tags: [
+        path: '/me',
+        method: 'GET',
+        description: 'Get user profile with cat fact'
+      },
       {
-        name: 'Profile',
-        description: 'User profile operations'
+        path: '/api-docs',
+        method: 'GET',
+        description: 'Interactive API documentation'
+      },
+      {
+        path: '/health',
+        method: 'GET',
+        description: 'Health check endpoint'
       }
-    ],
-    components: {
-      schemas: {
-        UserProfile: {
-          type: 'object',
-          properties: {
-            status: {
-              type: 'string',
-              example: 'success',
-              description: 'Response status'
-            },
-            user: {
-              type: 'object',
-              properties: {
-                email: {
-                  type: 'string',
-                  example: 'user@example.com',
-                  description: 'User email address'
-                },
-                name: {
-                  type: 'string',
-                  example: 'John Doe',
-                  description: 'User full name'
-                },
-                stack: {
-                  type: 'string',
-                  example: 'Backend Development',
-                  description: 'User technical stack/specialization'
-                }
-              }
-            },
-            timestamp: {
-              type: 'string',
-              format: 'date-time',
-              example: '2024-01-01T12:00:00.000Z',
-              description: 'ISO timestamp of the request'
-            },
-            fact: {
-              type: 'string',
-              example: 'Cats can jump up to six times their length.',
-              description: 'Random cat fact from external API or fallback fact'
-            }
-          }
-        },
-        Error: {
-          type: 'object',
-          properties: {
-            status: {
-              type: 'string',
-              example: 'error',
-              description: 'Error status'
-            },
-            message: {
-              type: 'string',
-              example: 'Something went wrong',
-              description: 'Error message'
-            }
-          }
-        }
-      }
+    ]
+  });
+});
+
+/**
+ * @swagger
+ * /me:
+ *   get:
+ *     summary: Get user profile information
+ *     description: Returns the user's profile information (from environment variables) along with a random cat fact from an external API
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: Successful response with user profile and cat fact
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserProfile'
+ *         examples:
+ *           success:
+ *             summary: Example successful response
+ *             value:
+ *               status: "success"
+ *               user:
+ *                 email: "john.doe@example.com"
+ *                 name: "John Doe"
+ *                 stack: "Full Stack Development"
+ *               timestamp: "2024-01-01T12:00:00.000Z"
+ *               fact: "Cats sleep for 70% of their lives."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *         examples:
+ *           error:
+ *             summary: Example error response
+ *             value:
+ *               status: "error"
+ *               message: "Something went wrong"
+ */
+app.get('/me', async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    let catFact;
+    try {
+      const response = await axios.get('https://catfact.ninja/fact', {
+        timeout: 5000
+      });
+      catFact = response.data.fact;
+    } catch (error) {
+      catFact = "Cats sleep for 70% of their lives. (Fallback fact)";
     }
-  },
-  apis: ['./server.js'] // Path to the API docs
-};
 
-const swaggerSpec = swaggerJsdoc(options);
+    const responseData = {
+      status: "success",
+      user: {
+        email: process.env.USER_EMAIL || "Not configured",
+        name: process.env.USER_NAME || "Not configured",
+        stack: process.env.USER_STACK || "Not configured"
+      },
+      timestamp: timestamp,
+      fact: catFact,
+      note: process.env.USER_EMAIL ? "User data loaded from environment variables" : "Using default environment variables"
+    };
+    
+    res.json(responseData);
+  } catch (error) {
+    console.error('Error in /me endpoint:', error);
+    res.status(500).json({
+      status: "error",
+      message: "Something went wrong",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
-module.exports = swaggerSpec;
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Check if the API is running properly
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "healthy"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 uptime:
+ *                   type: number
+ *                   example: 123.45
+ */
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
+  });
+});
+
+// Start server - IMPORTANT: Use 0.0.0.0 for Docker/Fly.io
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`API Documentation available at http://0.0.0.0:${PORT}/api-docs`);
+  console.log(`Health check: http://0.0.0.0:${PORT}/health`);
+});

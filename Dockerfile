@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Set production environment
 ENV NODE_ENV="production"
-
+ENV PORT=8080
 
 # Throw-away build stage to reduce size of final image
 FROM base AS build
@@ -22,11 +22,10 @@ RUN apt-get update -qq && \
 
 # Install node modules
 COPY package-lock.json package.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
 # Copy application code
 COPY . .
-
 
 # Final stage for app image
 FROM base
@@ -35,5 +34,5 @@ FROM base
 COPY --from=build /app /app
 
 # Start the server by default, this can be overwritten at runtime
-EXPOSE 3000
+EXPOSE 8080
 CMD [ "npm", "run", "start" ]
