@@ -1,20 +1,119 @@
-const express = require("express")
-const axios = require("axios")
+const express = require("express");
+const axios = require("axios");
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 require('dotenv').config();
 
-app = express();
-PORT = process.env.PORT
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   next();
 });
 
-app.get('/me', async (req, res) => {
-    try{
-const timestamp = new Date().toISOString();
+// Serve Swagger UI at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customSiteTitle: 'Profile API with Cat Facts',
+  customCss: '.swagger-ui .topbar { display: none }',
+  swaggerOptions: {
+    docExpansion: 'none',
+    filter: true,
+    showRequestDuration: true
+  }
+}));
 
- let catFact;
+// Serve swagger.json
+app.get('/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: API Root - Welcome message
+ *     description: Returns a welcome message for the API
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: Successful response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Welcome to Profile API with Cat Facts
+ *                 documentation:
+ *                   type: string
+ *                   example: /api-docs
+ */
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to Profile API with Cat Facts',
+    documentation: '/api-docs',
+    endpoints: [
+      {
+        path: '/me',
+        method: 'GET',
+        description: 'Get user profile with cat fact'
+      },
+      {
+        path: '/api-docs',
+        method: 'GET',
+        description: 'Interactive API documentation'
+      }
+    ]
+  });
+});
+
+/**
+ * @swagger
+ * /me:
+ *   get:
+ *     summary: Get user profile information
+ *     description: Returns the user's profile information (from environment variables) along with a random cat fact from an external API
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: Successful response with user profile and cat fact
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserProfile'
+ *         examples:
+ *           success:
+ *             summary: Example successful response
+ *             value:
+ *               status: "success"
+ *               user:
+ *                 email: "john.doe@example.com"
+ *                 name: "John Doe"
+ *                 stack: "Full Stack Development"
+ *               timestamp: "2024-01-01T12:00:00.000Z"
+ *               fact: "Cats sleep for 70% of their lives."
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *         examples:
+ *           error:
+ *             summary: Example error response
+ *             value:
+ *               status: "error"
+ *               message: "Something went wrong"
+ */
+app.get('/me', async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    let catFact;
     try {
       const response = await axios.get('https://catfact.ninja/fact', {
         timeout: 5000
@@ -24,7 +123,7 @@ const timestamp = new Date().toISOString();
       catFact = "Cats sleep for 70% of their lives. (Fallback fact)";
     }
 
-     const responseData = {
+    const responseData = {
       status: "success",
       user: {
         email: process.env.USER_EMAIL,
@@ -32,19 +131,57 @@ const timestamp = new Date().toISOString();
         stack: process.env.USER_STACK
       },
       timestamp: timestamp,
-      fact: catFact
+      fact: catFact,
+      note: process.env.USER_EMAIL ? "User data loaded from environment variables" : "Using default environment variables"
     };
+    
     res.json(responseData);
-    }
-    catch(error){
-res.status(500).json({
+  } catch (error) {
+    console.error('Error in /me endpoint:', error);
+    res.status(500).json({
       status: "error",
-      message: "Something went wrong"
+      message: "Something went wrong",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
-    }
+  }
 });
- app.listen(PORT, "localhost", () => {
-   console.log(`Server running on http://localhost:${PORT}`)
-// app.listen(PORT, '0.0.0.0', () => {
-//   console.log(`Server running on http://0.0.0.0:${PORT}`);
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Check if the API is running properly
+ *     tags: [Profile]
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "healthy"
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 uptime:
+ *                   type: number
+ *                   example: 123.45
+ */
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV
+  });
+});
+
+// Start server
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 });
