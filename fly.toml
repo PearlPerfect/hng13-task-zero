@@ -1,29 +1,23 @@
-# fly.toml app configuration file
-app = "hng13-task-zero"
-primary_region = "iad"
+# fly.toml app configuration file generated for hng13-task-zero on 2025-12-12T16:47:14Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'hng13-task-zero'
+primary_region = 'lhr'
 
 [build]
-  # Comment out or remove the builder line to use Dockerfile instead of buildpacks
 
 [http_service]
-  internal_port = 3000  # Changed from 8080 to 3000
+  internal_port = 3000
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-  memory = "256mb"
+  memory = '1gb'
+  cpu_kind = 'shared'
   cpus = 1
-
-[env]
-  PORT = "3000"  # This must match internal_port
-  NODE_ENV = "production"
-
-# Optional health check
-[[http_service.checks]]
-  interval = 10000
-  grace_period = "5s"
-  method = "GET"
-  path = "/health"
-  timeout = 2000
+  memory_mb = 1024
